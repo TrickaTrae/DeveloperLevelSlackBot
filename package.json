@@ -9,8 +9,9 @@
   "author": "Traeger Winn",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.19.0",
     "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "mongodb": "^3.4.1",
     "slackbots": "^1.2.0"
   }
 }
