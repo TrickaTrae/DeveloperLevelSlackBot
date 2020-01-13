@@ -6,7 +6,7 @@ const app = express();
 
 // connecting to padawan db
 const url = 'mongodb://localhost:3001/meteor'; 
-MongoClient.connect(url, {useUnifiedTopology: true}).then(client => {
+MongoClient.connect(url, { useUnifiedTopology: true }).then(client => {
     console.log('Successfully connected to the server!');
     app.locals.db = client.db('meteor');
 }).catch(error => {
@@ -15,39 +15,65 @@ MongoClient.connect(url, {useUnifiedTopology: true}).then(client => {
 
 const bot = new SlackBot({
     token: process.env.BOT_USER_ACCESS_TOKEN,
-    name: 'developerlevelslackbot'
+    name: 'DeveloperLevelBot'
 })
 
 bot.on('start', () => {
     const params = {
         icon_emoji: ':developer-level:'
     }
-    bot.postMessageToUser('traeger.winn', 'DeveloperLevelBot is up and running!', params);
+    // bot.postMessageToUser('traeger.winn', 'DeveloperLevelBot is up and running!', params);
 });
 
-bot.on('error', (error) => {
-    console.log('something went wrong with developerlevelbot: ', error);
+bot.on('error', error => {
+    if(error == "Error: ratelimited") {
+        bot.postMessageToUser('traeger.winn', 'Error: ratelimited, try again in a few minutes');
+    } else {
+        console.log(error);
+    }
 })
 
 bot.on('message', data => {
-    console.log('data here: ', data);
-    testing();
+    if(data.type === 'message') {
+        console.log('data here: ', data);
+
+        const userList = bot.getUsers();
+        const users = userList._value
+        let currentUser;
+    
+        users.members.forEach(user => {
+            if(data.user === user.id) {
+                currentUser = user;
+            } else {
+                return;
+            }
+        });
+    
+        if(data.text.includes('DL/user')){
+            return getUserPadawanData(currentUser, data.channel);
+        } else if(data.text.includes('DL/help')) {
+            return bot.postMessage(data.channel, `Possible commands:
+                DL/user: Returns DeveloperLevel ID and Name based off slack email.`)
+        } else {
+            return;
+        }
+
+    } else {
+        return;
+    }
 })
 
-const testing = () => {
+const getUserPadawanData = (user, channel) => {
     const db = app.locals.db
-    const users = db.collection('users')
+    const padawanUsers = db.collection('users')
 
-    users.findOne({ slug: "admin@mydomain.com" }).then((result) => {
-        console.log('findOne result: ', result);
+    padawanUsers.findOne({ slug: user.profile.email }).then(result => {
+        if(result) {
+            bot.postMessage(channel, `DeveloperLevel user found! Name: ${result.MyProfile.firstName} ${result.MyProfile.lastName}, ID: ${result._id}`);
+        } else if(!result) {
+            bot.postMessage(channel, `No DeveloperLevel user found with email ${user.profile.email}`);
+        }
     })
-
-    // users.find({}).toArray((err, docs) => {
-        // console.log("Found the following records!");
-        // console.log(docs)
-    // });
 }
 
-// to-do
-// add if statement or switch/case to bot.on message
-// based off message, call appropriate function that will interact with padawan db
+// to-do: see about message on start, profile undefined TypeError, and error handling
