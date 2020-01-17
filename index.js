@@ -22,20 +22,15 @@ bot.on('start', () => {
     const params = {
         icon_emoji: ':developer-level:'
     }
-    // bot.postMessageToUser('traeger.winn', 'DeveloperLevelBot is up and running!', params);
+    bot.postMessage('DRSFLDQQZ', 'DeveloperLevelBot is up and running!', params);
 });
 
 bot.on('error', error => {
-    if(error == "Error: ratelimited") {
-        bot.postMessageToUser('traeger.winn', 'Error: ratelimited, try again in a few minutes');
-    } else {
-        console.log(error);
-    }
+    bot.postMessage('DRSFLDQQZ', error);
 })
 
 bot.on('message', data => {
-    if(data.type === 'message') {
-        console.log('data here: ', data);
+    if(data.type === 'message' && !data.bot_id && data.subtype !== 'message_changed') {
 
         const userList = bot.getUsers();
         const users = userList._value
@@ -50,10 +45,10 @@ bot.on('message', data => {
         });
     
         if(data.text.includes('DL/user')){
-            return getUserPadawanData(currentUser, data.channel);
+            getUserPadawanData(currentUser, data.channel);
         } else if(data.text.includes('DL/help')) {
-            return bot.postMessage(data.channel, `Possible commands:
-                DL/user: Returns DeveloperLevel ID and Name based off slack email.`)
+            bot.postMessage(data.channel, "Possible commands: " + "\n" +
+            "\u2022 DL/user - returns DeveloperLevel ID and Name based off slack email.")
         } else {
             return;
         }
@@ -67,7 +62,12 @@ const getUserPadawanData = (user, channel) => {
     const db = app.locals.db
     const padawanUsers = db.collection('users')
 
-    padawanUsers.findOne({ slug: user.profile.email }).then(result => {
+    padawanUsers.findOne({
+        $or: [
+            { slug: user.profile.email }, 
+            { 'emails': {$elemMatch: {address: user.profile.email}} }
+        ]
+    }).then(result => {
         if(result) {
             bot.postMessage(channel, `DeveloperLevel user found! Name: ${result.MyProfile.firstName} ${result.MyProfile.lastName}, ID: ${result._id}`);
         } else if(!result) {
@@ -75,5 +75,3 @@ const getUserPadawanData = (user, channel) => {
         }
     })
 }
-
-// to-do: see about message on start, profile undefined TypeError, and error handling
